@@ -31,7 +31,7 @@ export default class Server {
     }
 
     readonly start = (): void => {
-        const port = 1800
+        const port = 1882
         this.app.listen(port, () => {
             console.log(`Server running on port ${port}`)
         })

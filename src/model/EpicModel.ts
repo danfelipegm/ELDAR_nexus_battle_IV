@@ -1,69 +1,108 @@
-import * as fs from "fs";
-import * as path from "path";
+import { MongoClient } from "mongodb";
 import EpicInterface from "../types/EpicInterface";
+import e from "express";
 
 export default class EpicModel {
-  private dbPath = path.join(__dirname, "epics.json");
+  private uri = "mongodb://localhost:27017";
+  private dbName = "Inventario";
+  private collectionName = "epics";
+  private client: MongoClient;
 
-  private readEpics(): EpicInterface[] {
-    try {
-      const data = fs.readFileSync(this.dbPath, "utf-8");
-      return JSON.parse(data);
-    } catch (error) {
-      console.error("Error leyendo epics.json:", error);
-      return [];
-    }
-  }
-
-  private writeEpics(epics: EpicInterface[]): void {
-    try {
-      fs.writeFileSync(this.dbPath, JSON.stringify(epics, null, 2), "utf-8");
-    } catch (error) {
-      console.error("Error escribiendo epics.json:", error);
-    }
+  constructor() {
+    this.client = new MongoClient(this.uri);
   }
 
   readonly getAllEpics = async (): Promise<EpicInterface[]> => {
-    return this.readEpics();
+    try {
+      await this.client.connect();
+      const db = this.client.db(this.dbName);
+      const collection = db.collection<EpicInterface>(this.collectionName);
+      const epics = await collection.find({}).toArray();
+      return epics;
+    } catch (error) {
+      console.error("Error al obtener épicas:", error);
+      return [];
+    } finally {
+      await this.client.close();
+    }
   };
 
   readonly getEpicById = async (id: number): Promise<EpicInterface | null> => {
-    const epics = this.readEpics();
-    return epics.find(e => e.id === Number(id)) || null;
+    try {
+      await this.client.connect();
+      const db = this.client.db(this.dbName);
+      const collection = db.collection<EpicInterface>(this.collectionName);
+      const epic = await collection.findOne({ id: Number(id) });
+      return epic;
+    } catch (error) {
+      console.error("Error al obtener épica por ID:", error);
+      return null;
+    } finally {
+      await this.client.close();
+    }
   };
 
   readonly createEpic = async (epic: EpicInterface): Promise<void> => {
-  const epics = this.readEpics();
-  const ids = epics.map(e => typeof e.id === "number" ? e.id : 0);
-  const newId = (ids.length > 0 ? Math.max(...ids) : 0) + 1;
-  epics.push({ ...epic, id: newId });
-  this.writeEpics(epics);
-  console.log("Épica creada con éxito");
+    try {
+      await this.client.connect();
+      const db = this.client.db(this.dbName);
+      const collection = db.collection<EpicInterface>(this.collectionName);
+      const lastEpic = await collection.find().sort({ id: -1 }).limit(1).toArray();
+      const newId = (lastEpic.at(0)?.id ?? 0) + 1;
+      await collection.insertOne({ ...epic, id: newId });
+      console.log("Épica creada con éxito");
+    } catch (error) {
+      console.error("Error al crear épica:", error);
+    } finally {
+      await this.client.close();
+    }
   };
 
   readonly updateEpicById = async (id: number, updatedEpic: EpicInterface): Promise<EpicInterface | null> => {
-    const epics = this.readEpics();
-    const idx = epics.findIndex(e => e.id === Number(id));
-    if (idx === -1) {
-      console.log(`No se encontró ninguna épica con id ${id}`);
-      return null;
+    try {
+      await this.client.connect();
+      const db = this.client.db(this.dbName);
+      const collection = db.collection<EpicInterface>(this.collectionName);
+      const updateResult = await collection.updateOne({ id: Number(id) }, { $set: updatedEpic });
+      if (updateResult.matchedCount === 0) {
+        console.log(`No se encontró ninguna épica con id ${id}`);
+        return null;
+      }
+      console.log(`Épica con id ${id} actualizada con éxito`);
+      const updatedDoc = await collection.findOne({ id });
+      return updatedDoc;
+    } catch (error) {
+      console.error("Error al actualizar épica:", error);
+      throw error;
+    } finally {
+      await this.client.close();
     }
-    epics[idx] = { ...epics[idx], ...updatedEpic };
-    this.writeEpics(epics);
-    console.log(`Épica con id ${id} actualizada con éxito`);
-    return epics[idx];
   };
 
   readonly toggleEpicStatusById = async (id: number): Promise<boolean> => {
-    const epics = this.readEpics();
-    const idx = epics.findIndex(e => e.id === Number(id));
-    if (idx === -1) {
-      console.log("Épica no encontrada");
-      return false;
+    try {
+      await this.client.connect();
+      const db = this.client.db(this.dbName);
+      const collection = db.collection<EpicInterface>(this.collectionName);
+      const epic = await collection.findOne({ id });
+      if (!epic) {
+        console.log("Épica no encontrada");
+        return false;
+      }
+      const newStatus = !epic.status;
+      const result = await collection.updateOne({ id }, { $set: { status: newStatus } });
+      if (result.modifiedCount && result.modifiedCount > 0) {
+        console.log(`Épica con id ${id} cambiado a status = ${newStatus}`);
+        return true;
+      } else {
+        console.log(`No se pudo actualizar la épica con id ${id}`);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error al cambiar el status de la épica:", error);
+      throw error;
+    } finally {
+      await this.client.close();
     }
-    epics[idx].status = !epics[idx].status;
-    this.writeEpics(epics);
-    console.log(`Épica con id ${id} cambiado a status = ${epics[idx].status}`);
-    return true;
   };
 }
