@@ -1,0 +1,47 @@
+[
+	{
+		"id": 1,
+		"name": "Épica de prueba 1",
+		"image": "imagen1.png",
+		"description": "Descripción sin sentido 1",
+		"heroType": "Guerrero",
+		"type": "Ataque",
+		"effects": {
+			"effectType": "Daño",
+			"value": 10,
+			"durationTurns": 2
+		},
+		"dropRate": 0.15,
+		"status": true
+	},
+	{
+		"id": 2,
+		"name": "Épica de prueba 2",
+		"image": "imagen2.png",
+		"description": "Descripción sin sentido 2",
+		"heroType": "Mago",
+		"type": "Defensa",
+		"effects": {
+			"effectType": "Escudo",
+			"value": 20,
+			"durationTurns": 3
+		},
+		"dropRate": 0.10,
+		"status": false
+	},
+	{
+		"id": 3,
+		"name": "Épica de prueba 3",
+		"image": "imagen3.png",
+		"description": "Descripción sin sentido 3",
+		"heroType": "Arquero",
+		"type": "Apoyo",
+		"effects": {
+			"effectType": "Curación",
+			"value": 5,
+			"durationTurns": 1
+		},
+		"dropRate": 0.20,
+		"status": true
+	}
+]
